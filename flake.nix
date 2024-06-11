@@ -341,7 +341,7 @@
         };
 
         companionDesktop = pkgs.makeDesktopItem {
-          name = "Bitfocus Companion";
+          name = "bitfocusCompanion";
           desktopName = "Bitfocus Companion";
           exec = "${self.packages.${system}.companionBin}/bin/companionBin";
           terminal = true;
@@ -349,11 +349,11 @@
 
         companion = pkgs.runCommand "companion" { } ''
           mkdir -p $out/bin
-          cp "${self.packages.${system}.companionBin}/bin/companionBin" "$out/bin/companion"
+          cp "${self.packages.${system}.companionBin}/bin/companionBin" "$out/bin"
           mkdir -p $out/share/applications
           cp "${
             self.packages.${system}.companionDesktop
-          }/share/applications/Bitfocus Companion.desktop" "$out/share/applications/Bitfocus Companion.desktop"
+          }/share/applications/bitfocusCompanion.desktop" "$out/share/applications"
         '';
 
         # Set companion launcher script as main output for `nix build`.
