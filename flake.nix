@@ -340,20 +340,25 @@
           '';
         };
 
+        companionDesktopIcon = ./bitfocusCompanion.png;
+
         companionDesktop = pkgs.makeDesktopItem {
           name = "bitfocusCompanion";
           desktopName = "Bitfocus Companion";
           exec = "${self.packages.${system}.companionBin}/bin/companionBin";
+          icon = "bitfocusCompanion.png";
           terminal = true;
         };
 
         companion = pkgs.runCommand "companion" { } ''
           mkdir -p $out/bin
-          cp "${self.packages.${system}.companionBin}/bin/companionBin" "$out/bin"
+          cp "${self.packages.${system}.companionBin}/bin/companionBin" "$out/bin/companion"
           mkdir -p $out/share/applications
           cp "${
             self.packages.${system}.companionDesktop
           }/share/applications/bitfocusCompanion.desktop" "$out/share/applications"
+          mkdir -p "$out/share/icons/hicolor/128x128/apps"
+          cp "${self.packages.${system}.companionDesktopIcon}" "$out/share/icons/hicolor/128x128/apps/bitfocusCompanion.png"
         '';
 
         # Set companion launcher script as main output for `nix build`.
