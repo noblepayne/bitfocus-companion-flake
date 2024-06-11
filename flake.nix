@@ -25,6 +25,7 @@
           pkgs.udev
         ]}";
       };
+      # TODO: split this up callPackage style
       packages.${system} = {
 
         # Fetch v3.3.0 of Bitfocus Companion.
@@ -331,16 +332,52 @@
 
         # Finally, create a shellscript to use our custom node to run main.js from our pre-compiled
         # companion package output.
-        companion = pkgs.writeShellApplication {
-          name = "companion";
+        companionBin = pkgs.writeShellApplication {
+          name = "companionBin";
           runtimeInputs = [ self.packages.${system}.nodejs ];
           text = ''
             node ${self.packages.${system}.companionPkg}/main.js
           '';
         };
 
+        companionDesktop = pkgs.makeDesktopItem {
+          name = "Bitfocus Companion";
+          desktopName = "Bitfocus Companion";
+          exec = "${self.packages.${system}.companionBin}/bin/companionBin";
+          terminal = true;
+        };
+
+        companion = pkgs.runCommand "companion" { } ''
+          mkdir -p $out/bin
+          cp "${self.packages.${system}.companionBin}/bin/companionBin" "$out/bin/companion"
+          mkdir -p $out/share/applications
+          cp "${
+            self.packages.${system}.companionDesktop
+          }/share/applications/Bitfocus Companion.desktop" "$out/share/applications/Bitfocus Companion.desktop"
+        '';
+
         # Set companion launcher script as main output for `nix build`.
         default = self.packages.${system}.companion;
       };
+
+      nixosConfigurations.testos = nixpkgs.lib.nixosSystem {
+        inherit system;
+        modules = [
+          {
+            boot.loader.grub.device = "nodev";
+            fileSystems."/" = {
+              device = "none";
+              fsType = "tmpfs";
+              options = [
+                "defaults"
+                "mode=755"
+              ];
+            };
+            users.users.root.initialPassword = "password";
+            environment.systemPackages = [ self.packages.${system}.companion ];
+          }
+        ];
+      };
+
     };
 }
