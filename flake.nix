@@ -3,19 +3,27 @@
   outputs =
     { self, nixpkgs, ... }@inputs:
     let
-      supportedSystems = {
-        aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin;
-        aarch64-linux = nixpkgs.legacyPackages.aarch64-linux;
-        x86_64-darwin = nixpkgs.legacyPackages.x86_64-darwin;
-        x86_64-linux = nixpkgs.legacyPackages.x86_64-linux;
-      };
+      supportedSystems = nixpkgs.lib.attrsets.getAttrs [
+        "aarch64-darwin"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "x86_64-linux"
+      ] nixpkgs.legacyPackages;
     in
     {
+      overlays.default = (
+        final: prev: {
+          # TODO: prev or final here? nixpkgs manual says use prev for fns?
+          # "flakes arn't real" uses final...
+          companion = prev.callPackage ./companion.nix { };
+        }
+      );
 
       packages = builtins.mapAttrs (
         system: pkgs:
         let
-          companion = pkgs.callPackage ./companion.nix { };
+          # https://jade.fyi/blog/flakes-arent-real/
+          companion = (self.overlays.default pkgs pkgs).companion;
         in
         {
           nodejs = companion.nodejs;
@@ -25,6 +33,22 @@
           default = companion;
         }
       ) supportedSystems;
+
+      nixosModules.default =
+        {
+          pkgs,
+          config,
+          lib,
+          ...
+        }:
+        {
+          imports = [ ./module.nix ];
+          # inject flake deps into module via overlay
+          config = lib.mkIf config.programs.companion.enable {
+            nixpkgs.overlays = [ self.overlays.default ];
+            programs.companion.package = lib.mkDefault pkgs.companion;
+          };
+        };
 
       # devShell to facilitate manual builds and experiments.
       devShells = builtins.mapAttrs (system: pkgs: {
@@ -54,6 +78,7 @@
           inherit system;
           modules = [
             {
+              imports = [ self.nixosModules.default ];
               boot.loader.grub.device = "nodev";
               fileSystems."/" = {
                 device = "none";
@@ -64,7 +89,7 @@
                 ];
               };
               users.users.root.initialPassword = "password";
-              environment.systemPackages = [ self.packages.${system}.companion ];
+              programs.companion.enable = true;
             }
           ];
         };
