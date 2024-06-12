@@ -32,8 +32,8 @@
         companionRepo = pkgs.fetchFromGitHub {
           owner = "bitfocus";
           repo = "companion";
-          rev = "v3.3.0";
-          hash = "sha256-oKVoxl1F6W8pxuTSa1afGQ8mhLteq2hhdt4v87t8Qqg=";
+          rev = "v3.3.1";
+          hash = "sha256-Pb2WJvHixa3SIrtrP3h+MLCVzj6Unl7ZbsUn5MV8HnQ=";
           # Bundled companion modules are shipped as submodule, so fetch.
           fetchSubmodules = true;
         };
@@ -64,7 +64,7 @@
         # Build module-legacy.
         moduleLegacy = pkgs.stdenv.mkDerivation {
           pname = "module-legacy";
-          version = "3.3.0";
+          version = "3.3.1";
           src = "${self.packages.${system}.companionRepo}/module-legacy";
           nativeBuildInputs = [
             nodejs
@@ -144,7 +144,7 @@
         # Fetch deps for main companion package.
         companionOfflineCache = pkgs.stdenv.mkDerivation {
           pname = "companion-offline-cache";
-          version = "3.3.0";
+          version = "3.3.1";
           src = self.packages.${system}.companionRepo;
           dontConfigure = true;
           nativeBuildInputs = [
@@ -234,7 +234,7 @@
         # Build companion package (including all yarn workspaces).
         companionPkg = pkgs.stdenv.mkDerivation {
           pname = "companion-pkg";
-          version = "3.3.0";
+          version = "3.3.1";
           src = self.packages.${system}.companionRepo;
           dontConfigure = true;
           nativeBuildInputs = [
@@ -347,7 +347,7 @@
           name = "bitfocusCompanion";
           desktopName = "Bitfocus Companion";
           exec = "${self.packages.${system}.companionBin}/bin/companionBin";
-          icon = "bitfocusCompanion.png";
+          icon = "bitfocusCompanion";
           categories = [ "AudioVideo" ];
           terminal = true;
         };
@@ -360,7 +360,8 @@
             self.packages.${system}.companionDesktop
           }/share/applications/bitfocusCompanion.desktop" "$out/share/applications"
           mkdir -p "$out/share/icons/hicolor/128x128/apps"
-          cp "${self.packages.${system}.companionDesktopIcon}" "$out/share/icons/hicolor/128x128/apps/bitfocusCompanion.png"
+          cp "${self.packages.${system}.companionDesktopIcon}" \
+             "$out/share/icons/hicolor/128x128/apps/bitfocusCompanion.png"
         '';
 
         # Set companion launcher script as main output for `nix build`.
