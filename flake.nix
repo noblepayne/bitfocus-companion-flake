@@ -25,8 +25,6 @@
           default = companion;
         }
       ) supportedSystems;
-      # Set companion launcher script as main output for `nix build`.
-      # default = self.packages.${system}.companion;
 
       # devShell to facilitate manual builds and experiments.
       devShells = builtins.mapAttrs (system: pkgs: {

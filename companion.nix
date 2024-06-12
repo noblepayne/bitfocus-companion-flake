@@ -169,50 +169,6 @@ stdenv.mkDerivation (finalAttrs: {
     '';
   };
 
-  # Fetch deps for main companion package.
-  companionOfflineCache = stdenv.mkDerivation {
-    pname = "companion-offline-cache";
-    version = finalAttrs.version;
-    src = finalAttrs.companionRepo;
-    dontConfigure = true;
-    nativeBuildInputs = [
-      finalAttrs.yarn-berry
-      finalAttrs.nodejs
-      cacert
-      git
-    ];
-    buildPhase = ''
-      # Setup env for yarn.
-      export SSL_CERT_FILE="${cacert}/etc/ssl/ca-certificates.conf"
-      export HOME=$(mktemp -d)
-      # @companion-app/workspace@workspace:.
-      git init
-      git config user.name "builder"
-      git config user.email "builder@nix.example.com"
-      git commit -m "init" --allow-empty
-
-      # Setup yarn offline cache.
-      mkdir yarnCache
-      export YARN_ENABLE_GLOBAL_CACHE=false
-      export YARN_CACHE_FOLDER=$PWD/yarnCache
-
-      # Run yarn to pull all deps.
-      yarn install --immutable --mode=skip-build
-      # Download electron binary TODO: skip/remove this dep if possible
-      node ./node_modules/electron/install.js
-
-      # Save cached files to nix store.
-      mkdir $out
-      cp -r yarnCache $out/yarnCache
-      # Cache downloaded electron artifact.
-      cp -r $HOME/.cache $out/homeCache
-    '';
-    # use a fixed output derivation to allow yarn network access to prefetch deps.
-    outputHashAlgo = "sha256";
-    outputHash = "sha256-GFw0opNio3CemqutSnXdivSt6gRA0PH/xyB4CtYyfu8=";
-    outputHashMode = "recursive";
-  };
-
   # Manually prefech node-pre-gyp file for @julusian/skia-canvas.
   skiaCanvasVersion = "v1.0.5";
   skia-canvas =
@@ -243,6 +199,41 @@ stdenv.mkDerivation (finalAttrs: {
       cp ${tar} $out/${finalAttrs.skiaCanvasVersion}/${artifact}
     '';
 
+  # Fetch deps for main companion package.
+  companionOfflineCache = stdenv.mkDerivation {
+    pname = "companion-offline-cache";
+    version = finalAttrs.version;
+    src = finalAttrs.companionRepo;
+    dontConfigure = true;
+    nativeBuildInputs = [
+      finalAttrs.yarn-berry
+      cacert
+    ];
+    buildPhase = ''
+      # Setup env for yarn.
+      export SSL_CERT_FILE="${cacert}/etc/ssl/ca-certificates.conf"
+      export HOME=$(mktemp -d)
+
+      # Setup yarn offline cache.
+      mkdir yarnCache
+      export YARN_ENABLE_GLOBAL_CACHE=false
+      export YARN_CACHE_FOLDER=$PWD/yarnCache
+
+      # Run yarn to pull all deps.
+      yarn install --immutable --mode=skip-build
+
+      # Save cached files to nix store.
+      mkdir $out
+      cp -r yarnCache $out/yarnCache
+      # Cache downloaded electron artifact.
+      # cp -r $HOME/.cache $out/homeCache
+    '';
+    # use a fixed output derivation to allow yarn network access to prefetch deps.
+    outputHashAlgo = "sha256";
+    outputHash = "sha256-b/Nk+qaFvX1J3iITeiAnpunirLnF+a4cHzoc63JX9/4=";
+    outputHashMode = "recursive";
+  };
+
   # Build companion package (including all yarn workspaces).
   companionPkg = stdenv.mkDerivation {
     pname = "companion-pkg";
@@ -271,7 +262,7 @@ stdenv.mkDerivation (finalAttrs: {
       export YARN_ENABLE_GLOBAL_CACHE=false
       export YARN_CACHE_FOLDER=$PWD/yarnCache
       cp -r ${finalAttrs.companionOfflineCache}/yarnCache ./yarnCache
-      cp -r ${finalAttrs.companionOfflineCache}/homeCache $HOME/.cache
+      # cp -r ${finalAttrs.companionOfflineCache}/homeCache $HOME/.cache
 
       # Configure yarn to operate offline using our prefetched files.
       export YARN_ENABLE_OFFLINE_MODE=1
@@ -282,6 +273,9 @@ stdenv.mkDerivation (finalAttrs: {
       # Configure node-pre-gyp to use our precached files.
       # magic yarn env var to pass options to node-pre-gyp to use offline cache
       export npm_config_index_binary_host_mirror="file://${finalAttrs.skia-canvas}"
+
+      # Skip downloading electron binary, as we don't need it.
+      export ELECTRON_SKIP_BINARY_DOWNLOAD=1
 
       # Install prefetched deps (into node_modules).
       yarn install --immutable
@@ -308,9 +302,12 @@ stdenv.mkDerivation (finalAttrs: {
   # companion package output.
   companionBin = writeShellApplication {
     name = "companionBin";
-    runtimeInputs = [ finalAttrs.nodejs ];
+    runtimeInputs = [
+      xdg-utils
+      finalAttrs.nodejs
+    ];
     text = ''
-      (sleep 1 && ${xdg-utils}/bin/xdg-open "http://localhost:8000" &>/dev/null) &
+      (sleep 1 && xdg-open "http://localhost:8000" &>/dev/null) &
       node ${finalAttrs.companionPkg}/main.js
     '';
   };
