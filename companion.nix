@@ -1,6 +1,7 @@
 {
   # builders and fetchers
   stdenv,
+  runCommand,
   fetchurl,
   fetchFromGitHub,
   # yarn builds
@@ -8,7 +9,6 @@
   fixup-yarn-lock,
   yarn,
   cacert,
-  python3,
   git,
   nodejs_18,
   yarn-berry,
@@ -177,19 +177,19 @@ stdenv.mkDerivation (finalAttrs: {
     dontConfigure = true;
     nativeBuildInputs = [
       finalAttrs.yarn-berry
+      finalAttrs.nodejs
       cacert
-      python3
       git
     ];
     buildPhase = ''
       # Setup env for yarn.
       export SSL_CERT_FILE="${cacert}/etc/ssl/ca-certificates.conf"
       export HOME=$(mktemp -d)
-      git config --global user.name "builder"
-      git config --global user.email "builder@nix.example.com"
+      # @companion-app/workspace@workspace:.
       git init
-      git add *
-      git commit -m "init"
+      git config user.name "builder"
+      git config user.email "builder@nix.example.com"
+      git commit -m "init" --allow-empty
 
       # Setup yarn offline cache.
       mkdir yarnCache
@@ -197,17 +197,19 @@ stdenv.mkDerivation (finalAttrs: {
       export YARN_CACHE_FOLDER=$PWD/yarnCache
 
       # Run yarn to pull all deps.
-      yarn --immutable
+      yarn install --immutable --mode=skip-build
+      # Download electron binary TODO: skip/remove this dep if possible
+      node ./node_modules/electron/install.js
 
       # Save cached files to nix store.
-      mkdir -p $out/yarnCache
-      mkdir -p $out/homeCache
-      cp -r yarnCache/* $out/yarnCache/
-      cp -r $HOME/.cache/* $out/homeCache/
+      mkdir $out
+      cp -r yarnCache $out/yarnCache
+      # Cache downloaded electron artifact.
+      cp -r $HOME/.cache $out/homeCache
     '';
     # use a fixed output derivation to allow yarn network access to prefetch deps.
     outputHashAlgo = "sha256";
-    outputHash = "sha256-tcf+Bsvdl3o0jQ9L0pIJ+CG/uvcZs3sdJmJqYkOoGfU=";
+    outputHash = "sha256-GFw0opNio3CemqutSnXdivSt6gRA0PH/xyB4CtYyfu8=";
     outputHashMode = "recursive";
   };
 
@@ -236,26 +238,10 @@ stdenv.mkDerivation (finalAttrs: {
         inherit hash;
       };
     in
-    stdenv.mkDerivation {
-      pname = "skia-canvas";
-      version = finalAttrs.skiaCanvasVersion;
-      src = tar;
-      dontUnpack = true;
-      dontConfigure = true;
-      dontBuild = true;
-      installPhase = ''
-        runHook preInstall
-        mkdir -p $out/${finalAttrs.skiaCanvasVersion}
-        cp ${tar} $out/${finalAttrs.skiaCanvasVersion}/${artifact}
-        runHook postInstall
-      '';
-    };
-
-  # Manually prefech node-pre-gyp file for @julusian/skia-canvas.
-  # skia-canvas-node-pre-gyp = pkgs.fetchurl {
-  #   url = "https://github.com/Julusian/skia-canvas/releases/download/v1.0.5/linux-x64-napi-v6-glibc.tar.gz";
-  #   hash = "sha256-PnXokx3G3oszim+V/QFkEbDtCGF4DdbsSlDI4Z0fmL8=";
-  # };
+    runCommand "skia-canvas" { } ''
+      mkdir -p $out/${finalAttrs.skiaCanvasVersion}
+      cp ${tar} $out/${finalAttrs.skiaCanvasVersion}/${artifact}
+    '';
 
   # Build companion package (including all yarn workspaces).
   companionPkg = stdenv.mkDerivation {
@@ -264,12 +250,10 @@ stdenv.mkDerivation (finalAttrs: {
     src = finalAttrs.companionRepo;
     dontConfigure = true;
     nativeBuildInputs = [
-      finalAttrs.companionOfflineCache
       finalAttrs.yarn-berry
       finalAttrs.nodejs
       cacert
-      python3
-      git
+      git # @companion-app/workspace@workspace:.
     ];
     # Add back support for emojis that was disabled due to problems on windows...
     patches = [ ./add-emoji-support.patch ];
@@ -277,19 +261,17 @@ stdenv.mkDerivation (finalAttrs: {
       # Setup env for yarn.
       export SSL_CERT_FILE="${cacert}/etc/ssl/ca-certificates.conf"
       export HOME=$(mktemp -d)
-      git config --global user.name "builder"
-      git config --global user.email "builder@nix.example.com"
+      # @companion-app/workspace@workspace:.
       git init
-      git add *
-      git commit -m "init"
+      git config user.name "builder"
+      git config user.email "builder@nix.example.com"
+      git commit -m "init" --allow-empty
 
       # Restore offline cache files so we don't need network access.
-      mkdir yarnCache
       export YARN_ENABLE_GLOBAL_CACHE=false
       export YARN_CACHE_FOLDER=$PWD/yarnCache
-      cp -r ${finalAttrs.companionOfflineCache}/yarnCache/* yarnCache/
-      mkdir $HOME/.cache
-      cp -r ${finalAttrs.companionOfflineCache}/homeCache/* $HOME/.cache/
+      cp -r ${finalAttrs.companionOfflineCache}/yarnCache ./yarnCache
+      cp -r ${finalAttrs.companionOfflineCache}/homeCache $HOME/.cache
 
       # Configure yarn to operate offline using our prefetched files.
       export YARN_ENABLE_OFFLINE_MODE=1
@@ -298,16 +280,11 @@ stdenv.mkDerivation (finalAttrs: {
       # Configure node-pre-gyp to build from source.
       # export npm_config_build_from_source=true  # doesn't work due to no node-gyp support in project.
       # Configure node-pre-gyp to use our precached files.
-      # TARTMP=$(mktemp -d)
-      # mkdir "$TARTMP/v1.0.5"
-      # TODO: move to derivation? less janky handling of name and version?
-      # cp "${finalAttrs.skia-canvas}" \
-      #    "$TARTMP/v1.0.5/linux-x64-napi-v6-glibc.tar.gz"
       # magic yarn env var to pass options to node-pre-gyp to use offline cache
       export npm_config_index_binary_host_mirror="file://${finalAttrs.skia-canvas}"
 
       # Install prefetched deps (into node_modules).
-      yarn --immutable
+      yarn install --immutable
       patchShebangs node_modules  # allow scripts/bins to run in nix env.
 
       # Add prebuilt module-legacy files into our build environment.
@@ -317,7 +294,8 @@ stdenv.mkDerivation (finalAttrs: {
       export PATH="$PWD/node_modules/.bin:$PATH"  # add node_modules binaries to path.
       zx tools/build/dist.mjs  # build project (skipping package.mjs, so not running complete.mjs)
       pushd dist
-      yarn --no-immutable  # install final set of deps needed for built project.
+      # N.B. can't be immutable
+      yarn install # install final set of deps needed for built project.
       popd
 
       # Copy built package to nix store.
@@ -332,7 +310,7 @@ stdenv.mkDerivation (finalAttrs: {
     name = "companionBin";
     runtimeInputs = [ finalAttrs.nodejs ];
     text = ''
-      (sleep 1 && ${xdg-utils}/bin/xdg-open "http://localhost:8000") &
+      (sleep 1 && ${xdg-utils}/bin/xdg-open "http://localhost:8000" &>/dev/null) &
       node ${finalAttrs.companionPkg}/main.js
     '';
   };
