@@ -336,6 +336,7 @@
           name = "companionBin";
           runtimeInputs = [ self.packages.${system}.nodejs ];
           text = ''
+            (sleep 1 && ${pkgs.xdg-utils}/bin/xdg-open "http://localhost:8000") &
             node ${self.packages.${system}.companionPkg}/main.js
           '';
         };
@@ -347,6 +348,7 @@
           desktopName = "Bitfocus Companion";
           exec = "${self.packages.${system}.companionBin}/bin/companionBin";
           icon = "bitfocusCompanion.png";
+          categories = [ "AudioVideo" ];
           terminal = true;
         };
 
