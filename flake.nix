@@ -58,6 +58,7 @@
           buildInputs = [
             pkgs.neovim
             pkgs.nixfmt-rfc-style
+          ];
         };
       })
       supportedSystems;
@@ -80,19 +81,22 @@
             };
             users.users.root.initialPassword = "password";
 
+            # Add a non-root user for testing the service
             users.users.test = {
               isNormalUser = true;
               initialPassword = "password";
               group = "users";
             };
 
+            # Enable companion with service configuration
             programs.companion = {
               enable = true;
               autoStart = true;
-              user = "test";
+              user = "test"; # Use the test user we created
               openFirewall = true;
             };
 
+            # Enable SSH for easier access to the VM
             services.openssh.enable = true;
             services.openssh.settings.PermitRootLogin = "yes";
             networking.firewall.allowedTCPPorts = [22];
