@@ -13,7 +13,7 @@
   nodejs_18,
   yarn-berry,
   # runtime deps
-  libusb,
+  libusb1,
   udev,
   fontconfig,
   patchelf,
@@ -68,7 +68,7 @@ stdenv.mkDerivation (finalAttrs: {
     version = nodejs_18.version;
     nativeBuildInputs = [ autoPatchelfHook ];
     buildInputs = nodejs_18.buildInputs ++ [
-      libusb
+      libusb1
       fontconfig
       udev
       patchelf
