@@ -66,13 +66,15 @@ stdenv.mkDerivation (finalAttrs: {
   nodejs = stdenv.mkDerivation {
     pname = "nodejs-with-libs";
     version = nodejs_18.version;
-    nativeBuildInputs = [ autoPatchelfHook ];
-    buildInputs = nodejs_18.buildInputs ++ [
-      libusb1
-      fontconfig
-      udev
-      patchelf
-    ];
+    nativeBuildInputs = [autoPatchelfHook];
+    buildInputs =
+      nodejs_18.buildInputs
+      ++ [
+        libusb1
+        fontconfig
+        udev
+        patchelf
+      ];
     src = nodejs_18;
     buildPhase = ''
       # Copy all files from pkgs.nodejs_18 to our output.
@@ -88,8 +90,8 @@ stdenv.mkDerivation (finalAttrs: {
     '';
   };
 
-  yarn1 = yarn.override { nodejs = finalAttrs.nodejs; };
-  yarn-berry = yarn-berry.override { nodejs = finalAttrs.nodejs; };
+  yarn1 = yarn.override {nodejs = finalAttrs.nodejs;};
+  yarn-berry = yarn-berry.override {nodejs = finalAttrs.nodejs;};
 
   # Build module-legacy.
   moduleLegacy = stdenv.mkDerivation {
@@ -171,30 +173,38 @@ stdenv.mkDerivation (finalAttrs: {
 
   # Manually prefech node-pre-gyp file for @julusian/skia-canvas.
   skiaCanvasVersion = "v1.0.5";
-  skia-canvas =
-    let
-      buildPlatform = stdenv.buildPlatform;
-      os = if buildPlatform.isDarwin then "darwin" else "linux";
-      arch = if buildPlatform.efiArch != "aa64" then buildPlatform.efiArch else "arm64";
-      # TODO: support musl/"unknown" with linux?
-      libc = if buildPlatform.isDarwin then "unknown" else "glibc";
-      # TODO: don't hardcode napi version?
-      artifactId = "${os}-${arch}-napi-v6-${libc}";
-      hashes = {
-        linux-x64-napi-v6-glibc = "sha256-PnXokx3G3oszim+V/QFkEbDtCGF4DdbsSlDI4Z0fmL8=";
-        linux-arm64-napi-v6-glibc = "sha256-yEyfska9rVdbNDSQWZZZl6h4MCewdA/g18yyv0juQgM=";
-        darwin-x64-napi-v6-unknown = "sha256-56KkYMJNYhyLXjchNP597eCY2h+Rl4bOyBIWADFopXc=";
-        darwin-arm64-napi-v6-unknown = "sha256-Kn1eVd7q6uidA5Gx5RCivlZH3F8zNb7//vkXRxl2Y1o=";
-      };
-      hash = hashes.${artifactId};
-      artifact = "${artifactId}.tar.gz";
-      url = "https://github.com/Julusian/skia-canvas/releases/download/${finalAttrs.skiaCanvasVersion}/${artifact}";
-      tar = fetchurl {
-        inherit url;
-        inherit hash;
-      };
-    in
-    runCommand "skia-canvas" { } ''
+  skia-canvas = let
+    buildPlatform = stdenv.buildPlatform;
+    os =
+      if buildPlatform.isDarwin
+      then "darwin"
+      else "linux";
+    arch =
+      if buildPlatform.efiArch != "aa64"
+      then buildPlatform.efiArch
+      else "arm64";
+    # TODO: support musl/"unknown" with linux?
+    libc =
+      if buildPlatform.isDarwin
+      then "unknown"
+      else "glibc";
+    # TODO: don't hardcode napi version?
+    artifactId = "${os}-${arch}-napi-v6-${libc}";
+    hashes = {
+      linux-x64-napi-v6-glibc = "sha256-PnXokx3G3oszim+V/QFkEbDtCGF4DdbsSlDI4Z0fmL8=";
+      linux-arm64-napi-v6-glibc = "sha256-yEyfska9rVdbNDSQWZZZl6h4MCewdA/g18yyv0juQgM=";
+      darwin-x64-napi-v6-unknown = "sha256-56KkYMJNYhyLXjchNP597eCY2h+Rl4bOyBIWADFopXc=";
+      darwin-arm64-napi-v6-unknown = "sha256-Kn1eVd7q6uidA5Gx5RCivlZH3F8zNb7//vkXRxl2Y1o=";
+    };
+    hash = hashes.${artifactId};
+    artifact = "${artifactId}.tar.gz";
+    url = "https://github.com/Julusian/skia-canvas/releases/download/${finalAttrs.skiaCanvasVersion}/${artifact}";
+    tar = fetchurl {
+      inherit url;
+      inherit hash;
+    };
+  in
+    runCommand "skia-canvas" {} ''
       mkdir -p $out/${finalAttrs.skiaCanvasVersion}
       cp ${tar} $out/${finalAttrs.skiaCanvasVersion}/${artifact}
     '';
@@ -247,7 +257,7 @@ stdenv.mkDerivation (finalAttrs: {
       git # @companion-app/workspace@workspace:.
     ];
     # Add back support for emojis that was disabled due to problems on windows...
-    patches = [ ./add-emoji-support.patch ];
+    patches = [./add-emoji-support.patch];
     buildPhase = ''
       # Setup env for yarn.
       export SSL_CERT_FILE="${cacert}/etc/ssl/ca-certificates.conf"
@@ -319,7 +329,7 @@ stdenv.mkDerivation (finalAttrs: {
     desktopName = "Bitfocus Companion";
     exec = "${finalAttrs.companionBin}/bin/companionBin";
     icon = "bitfocusCompanion";
-    categories = [ "AudioVideo" ];
+    categories = ["AudioVideo"];
     terminal = true;
   };
 
