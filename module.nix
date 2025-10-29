@@ -3,8 +3,7 @@
   lib,
   pkgs,
   ...
-}:
-let
+}: let
   options.programs.companion = {
     package = lib.mkOption {
       type = lib.types.package;
@@ -13,8 +12,7 @@ let
     enable = lib.mkEnableOption "Add Bitfocus Companion to installed packages.";
   };
   cfg = config.programs.companion;
-in
-{
+in {
   inherit options;
-  config = lib.mkIf cfg.enable { environment.systemPackages = [ cfg.package ]; };
+  config = lib.mkIf cfg.enable {environment.systemPackages = [cfg.package];};
 }
