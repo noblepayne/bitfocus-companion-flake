@@ -5,7 +5,7 @@ index a6b771f..e1e6a97 100644
 @@ -6,6 +6,9 @@ use oxhttp::model::{Body, Request, StatusCode};
  use rayon::prelude::*;
  use sha2::{Digest, Sha512};
- 
+
 +const MAX_RETRIES: u32 = 5;
 +const RETRY_DELAY_MS: u64 = 2000;
 +
@@ -15,7 +15,7 @@ index a6b771f..e1e6a97 100644
 @@ -48,9 +51,24 @@ fn add_integrity(
  ) -> (String, String) {
      let SourceWithoutIntegrity::Tgz { url } = source;
- 
+
 -    let response = client
 -        .request(Request::builder().uri(&url).body(Body::empty()).unwrap())
 -        .unwrap();
@@ -37,6 +37,6 @@ index a6b771f..e1e6a97 100644
 +            }
 +        }
 +    };
- 
+
      if response.status() != StatusCode::OK {
          eprintln!("Failed to fetch {}: {}", url, response.status());
