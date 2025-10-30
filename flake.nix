@@ -91,13 +91,18 @@
             fileSystems."/" = {
               device = "none";
               fsType = "tmpfs";
-              options = [
-                "defaults"
-                "mode=755"
-              ];
+              options = ["defaults" "mode=755"];
             };
             users.users.root.initialPassword = "password";
+            users.users.test = {
+              isNormalUser = true;
+              initialPassword = "password";
+              group = "users";
+            };
             programs.companion.enable = true;
+            services.openssh.enable = true;
+            services.openssh.settings.PermitRootLogin = "yes";
+            networking.firewall.allowedTCPPorts = [22];
           }
         ];
       };
