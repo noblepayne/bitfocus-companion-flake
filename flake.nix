@@ -19,6 +19,9 @@
         # TODO: prev or final here? nixpkgs manual says use prev for fns?
         # "flakes arn't real" uses final...
         companion = prev.callPackage ./package.nix {};
+        yarn-berry-fetcher-with-retries = final.yarn-berry_4.yarn-berry-fetcher.overrideAttrs (old: {
+          patches = [./yarn-berry-fetcher_retries.patch];
+        });
       }
     );
 
@@ -32,10 +35,10 @@
       builtins.mapAttrs (
         system: pkgs: let
           # https://jade.fyi/blog/flakes-arent-real/
-          companion = (self.overlays.default pkgs pkgs).companion;
+          overlayPkgs = self.overlays.default pkgs pkgs;
         in {
-          companion = companion;
-          default = companion;
+          inherit (overlayPkgs) yarn-berry-fetcher-with-retries companion;
+          default = overlayPkgs.companion;
         }
       )
       supportedSystems;

@@ -1,0 +1,42 @@
+diff --git a/src/missing_hashes.rs b/src/missing_hashes.rs
+index a6b771f..e1e6a97 100644
+--- a/src/missing_hashes.rs
++++ b/src/missing_hashes.rs
+@@ -6,6 +6,9 @@ use oxhttp::model::{Body, Request, StatusCode};
+ use rayon::prelude::*;
+ use sha2::{Digest, Sha512};
+ 
++const MAX_RETRIES: u32 = 5;
++const RETRY_DELAY_MS: u64 = 2000;
++
+ pub fn get_missing_hashes(lockfile: Lockfile, cache_key: CacheKey) -> BTreeMap<String, String> {
+     let missing = lockfile
+         .entries
+@@ -48,9 +51,24 @@ fn add_integrity(
+ ) -> (String, String) {
+     let SourceWithoutIntegrity::Tgz { url } = source;
+ 
+-    let response = client
+-        .request(Request::builder().uri(&url).body(Body::empty()).unwrap())
+-        .unwrap();
++    let mut attempt = 0;
++    let response = loop {
++        attempt += 1;
++        match client.request(Request::builder().uri(&url).body(Body::empty()).unwrap()) {
++            Ok(resp) => break resp,
++            Err(e) => {
++                if attempt >= MAX_RETRIES {
++                    eprintln!("Failed:   {} after {} attempts: {}", url, attempt, e);
++                    std::process::exit(1);
++                }
++                eprintln!(
++                    "Retry:    {} (attempt {}/{}): {}",
++                    url, attempt, MAX_RETRIES, e
++                );
++                std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
++            }
++        }
++    };
+ 
+     if response.status() != StatusCode::OK {
+         eprintln!("Failed to fetch {}: {}", url, response.status());
