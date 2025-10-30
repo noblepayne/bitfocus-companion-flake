@@ -27,7 +27,7 @@
 in
   stdenv.mkDerivation rec {
     pname = "bitfocus-companion";
-    version = "4.1.3";
+    version = "4.1.4";
 
     strictDeps = true;
 
@@ -35,7 +35,7 @@ in
       owner = "bitfocus";
       repo = "companion";
       tag = "v${version}";
-      hash = "sha256-n32pE5WgmVTU4dCft9f8XFriJQ77FNjvDq6vhT0ilRg=";
+      hash = "sha256-4l28vgMo/hy8lgMd69MLxBmI41sgNGDYnKUZafZDT5k=";
     };
 
     passthru.updateScript = nix-update-script {};
@@ -80,7 +80,7 @@ in
 
     offlineCache = yarn-berry.fetchYarnBerryDeps {
       inherit src missingHashes;
-      hash = "sha256-3i4910OlhXTLAgjITvGFRF8fBIIuzva+9ZaD7Z3bLgU=";
+      hash = "sha256-bOqUIizc6WClJUWhYVekqbru+FrHmDAMVpbrpVTkgeU=";
     };
 
     env = {
