@@ -43,7 +43,7 @@ in {
         Type = "simple";
         User = cfg.user;
         Group = cfg.group;
-        ExecStart = "${cfg.package}/bin/companion";
+        ExecStart = "${cfg.package}/bin/bitfocus-companion";
         Restart = "on-failure";
         RestartSec = "10s";
         NoNewPrivileges = true;
